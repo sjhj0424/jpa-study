@@ -1,9 +1,9 @@
-package com.example.jpastudy.api;
+package com.example.jpastudy.adapter.in.web;
 
+import com.example.jpastudy.application.port.in.MemberUseCase;
+import com.example.jpastudy.application.port.in.TeamUseCase;
 import com.example.jpastudy.domain.Member;
 import com.example.jpastudy.domain.Team;
-import com.example.jpastudy.repository.TeamRepository;
-import com.example.jpastudy.service.MemberService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,12 +12,12 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api")
 public class MemberController {
-    private final MemberService memberService;
-    private final TeamRepository teamRepository;
+    private final MemberUseCase memberUseCase;
+    private final TeamUseCase teamUseCase;
 
-    public MemberController(MemberService memberService, TeamRepository teamRepository) {
-        this.memberService = memberService;
-        this.teamRepository = teamRepository;
+    public MemberController(MemberUseCase memberUseCase, TeamUseCase teamUseCase) {
+        this.memberUseCase = memberUseCase;
+        this.teamUseCase = teamUseCase;
     }
 
     // Team endpoints
@@ -26,13 +26,13 @@ public class MemberController {
 
     @PostMapping("/teams")
     public TeamDto createTeam(@RequestBody TeamCreateRequest request) {
-        Team team = teamRepository.save(new Team(request.name()));
+        Team team = teamUseCase.createTeam(request.name());
         return toDto(team);
     }
 
     @GetMapping("/teams")
     public List<TeamDto> getTeams() {
-        return teamRepository.findAll().stream()
+        return teamUseCase.findAll().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
@@ -49,31 +49,31 @@ public class MemberController {
 
     @PostMapping("/members")
     public MemberDto createMember(@RequestBody MemberCreateRequest request) {
-        Member saved = memberService.createMember(request.name(), request.age(), request.teamId());
+        Member saved = memberUseCase.createMember(request.name(), request.age(), request.teamId());
         return toDto(saved);
     }
 
     @GetMapping("/members")
     public List<MemberDto> getMembers() {
-        return memberService.findAll().stream()
+        return memberUseCase.findAll().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
 
     @GetMapping("/members/{id}")
     public MemberDto getMember(@PathVariable Long id) {
-        return toDto(memberService.findById(id));
+        return toDto(memberUseCase.findById(id));
     }
 
     @PutMapping("/members/{id}")
     public MemberDto updateMember(@PathVariable Long id, @RequestBody MemberUpdateRequest request) {
-        Member updated = memberService.updateMember(id, request.name(), request.age(), request.teamId());
+        Member updated = memberUseCase.updateMember(id, request.name(), request.age(), request.teamId());
         return toDto(updated);
     }
 
     @DeleteMapping("/members/{id}")
     public void deleteMember(@PathVariable Long id) {
-        memberService.deleteMember(id);
+        memberUseCase.deleteMember(id);
     }
 
     private MemberDto toDto(Member m) {

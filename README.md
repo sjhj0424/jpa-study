@@ -2,6 +2,8 @@
 
 간단한 팀(Team) ↔ 회원(Member) 예제로 스프링부트와 JPA 사용법을 보여주는 프로젝트입니다. H2 메모리 DB를 사용하며, 시작 시 샘플 데이터가 자동으로 들어갑니다.
 
+현재 구조는 헥사고날 아키텍처(Ports & Adapters)를 따릅니다.
+
 ## 기술 스택
 - Spring Boot 3.3.2
 - Spring Data JPA
@@ -37,17 +39,32 @@ gradle bootRun
 │  ├─ main
 │  │  ├─ java/com/example/jpastudy
 │  │  │  ├─ JpaStudyApplication.java           # 앱 진입점
-│  │  │  ├─ api
-│  │  │  │  ├─ MemberController.java           # REST API
-│  │  │  │  └─ NotFoundException.java
+│  │  │  ├─ adapter
+│  │  │  │  ├─ in/web
+│  │  │  │  │  ├─ MemberController.java        # Web 어댑터(입력)
+│  │  │  │  │  └─ GlobalExceptionHandler.java  # 예외 → HTTP 매핑
+│  │  │  │  └─ out/persistence
+│  │  │  │     ├─ MemberJpaRepository.java     # Spring Data JPA
+│  │  │  │     ├─ TeamJpaRepository.java
+│  │  │  │     ├─ MemberRepositoryAdapter.java # 출력 포트 구현
+│  │  │  │     └─ TeamRepositoryAdapter.java
+│  │  │  ├─ application
+│  │  │  │  ├─ exception/NotFoundException.java
+│  │  │  │  ├─ port
+│  │  │  │  │  ├─ in
+│  │  │  │  │  │  ├─ MemberUseCase.java
+│  │  │  │  │  │  └─ TeamUseCase.java
+│  │  │  │  │  └─ out
+│  │  │  │  │     ├─ MemberRepositoryPort.java
+│  │  │  │  │     └─ TeamRepositoryPort.java
+│  │  │  │  └─ service
+│  │  │  │     ├─ MemberService.java           # 유스케이스 구현(도메인 로직)
+│  │  │  │     └─ TeamService.java
 │  │  │  ├─ config
 │  │  │  │  └─ DataInitializer.java            # 샘플 데이터 초기화
 │  │  │  ├─ domain
 │  │  │  │  ├─ Member.java                     # 회원 엔티티(N)
 │  │  │  │  └─ Team.java                       # 팀 엔티티(1)
-│  │  │  └─ repository
-│  │  │     ├─ MemberRepository.java
-│  │  │     └─ TeamRepository.java
 │  │  └─ resources/application.yml             # DB/JPA/로그 설정
 └─ README.md
 ```
@@ -77,11 +94,15 @@ gradle bootRun
 
 > 리소스를 찾을 수 없는 경우 404(Not Found) 응답을 반환합니다.
 
-## 동작 개요
-- 서비스 계층(`MemberService`)에서 트랜잭션 관리(`@Transactional`)
-- 수정은 JPA 변경감지(Dirty Checking)로 반영
-- 컨트롤러는 DTO로 응답하여 순환참조/지연로딩 이슈 회피
-- `DataInitializer`가 기본 팀(Dev/Design)과 샘플 회원을 삽입
+## 동작 개요 (헥사고날)
+- 입력 포트(`application.port.in.*`): 컨트롤러가 호출하는 유스케이스 인터페이스
+- 유스케이스 구현(`application.service.*`): 트랜잭션/도메인 로직 수행, 출력 포트에 의존
+- 출력 포트(`application.port.out.*`): 영속성 등 외부 시스템에 대한 추상화
+- 어댑터
+  - Web(입력): `adapter.in.web.*`가 HTTP 요청을 입력 포트로 전달
+  - Persistence(출력): `adapter.out.persistence.*`가 Spring Data JPA로 출력 포트 구현
+- 수정은 JPA 변경감지(Dirty Checking)로 반영, 트랜잭션은 유스케이스에서 관리
+- 예외는 애플리케이션 `NotFoundException`을 Web 어댑터에서 404로 매핑
 
 ## 설정 요약 (`src/main/resources/application.yml`)
 - H2 메모리 DB: `jdbc:h2:mem:jpastudy`
